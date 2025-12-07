@@ -114,8 +114,21 @@ async function pollStatus(jobId) {
 
     // pdf link
     if (data.pdf) {
-      pdfLink.innerHTML = `Report: <a class="text-amber-300 underline" href="${data.pdf}">Download PDF</a>`;
-    }
+  pdfLink.innerHTML = `
+    <button
+      onclick="window.location.href='${data.pdf}'"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium
+             bg-emerald-500 hover:bg-emerald-600 text-white shadow border border-black">
+      <!-- icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M3 14a1 1 0 011-1h3v-8a1 1 0 112 0v8h3a1 1 0 011 1v2H3v-2z" />
+        <path d="M7 11l3 3 3-3H7z" />
+      </svg>
+      Download Report
+    </button>
+  `;
+}
+
 
     if (data.status === 'done' || data.status === 'error') {
       appendLog('Job finished with status: ' + data.status + (data.error ? (' - ' + data.error) : ''));

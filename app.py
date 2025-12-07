@@ -3,7 +3,7 @@ import os
 import uuid
 import threading
 import time
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, current_app
+from flask import Flask, render_template, request, jsonify, send_from_directory, current_app
 from report_generator import generate_pdf
 from scanner import scan_network  # updated scanner that supports progress_callback
 
@@ -20,33 +20,39 @@ def index():
     return render_template("index.html")
 
 def run_scan_job(job_id, subnet):
-    try:
-        def progress_callback(event_type, payload):
-            job = jobs.get(job_id)
-            if not job:
-                return
-            if event_type == 'log':
-                job['logs'].append(payload)
-            elif event_type == 'progress':
-                job['progress'] = int(payload)
-            elif event_type == 'device':
-                job['results'].append(payload)
+    # YAHI SE CONTEXT DENA HAI
+    with app.app_context():
+        try:
+            def progress_callback(event_type, payload):
+                job = jobs.get(job_id)
+                if not job:
+                    return
+                if event_type == 'log':
+                    job['logs'].append(payload)
+                elif event_type == 'progress':
+                    job['progress'] = int(payload)
+                elif event_type == 'device':
+                    job['results'].append(payload)
 
-        # run scanner (this will call progress_callback)
-        report = scan_network(subnet, progress_callback=progress_callback)
+            # run scanner (this will call progress_callback)
+            report = scan_network(subnet, progress_callback=progress_callback)
+            # generate pdf
+            pdf_path = generate_pdf(report, output_dir=OUTPUT_DIR)
 
-        # generate pdf
-        pdf_path = generate_pdf(report, output_dir=OUTPUT_DIR)
-        jobs[job_id]['pdf'] = url_for('download_report', filename=os.path.basename(pdf_path))
-        jobs[job_id]['results'] = report
-        jobs[job_id]['progress'] = 100
-        jobs[job_id]['status'] = 'done'
-        jobs[job_id]['logs'].append("Scan finished successfully.")
-    except Exception as e:
-        current_app.logger.exception("Scan job failed")
-        jobs[job_id]['status'] = 'error'
-        jobs[job_id]['error'] = str(e)
-        jobs[job_id]['logs'].append(f"Error: {str(e)}")
+            # THREAD FIX: url_for mat use karo, direct path banao
+            filename = os.path.basename(pdf_path)
+            pdf_url = f"/outputs/{filename}"
+            jobs[job_id]['pdf'] = pdf_url
+            jobs[job_id]['results'] = report
+            jobs[job_id]['progress'] = 100
+            jobs[job_id]['status'] = 'done'
+            jobs[job_id]['logs'].append("Scan finished successfully.")
+        except Exception as e:
+            app.logger.exception("Scan job failed")
+            jobs[job_id]['status'] = 'error'
+            jobs[job_id]['error'] = str(e)
+            jobs[job_id]['logs'].append(f"Error: {str(e)}")
+
 
 @app.route("/scan", methods=["POST"])
 def start_scan():

@@ -68,7 +68,7 @@ def scan_network(subnet, progress_callback=None):
                     version = svc.get("version", "") or ""
 
                     if port in WEAK_PORTS:
-                        device["vulnerabilities"].append(f"Port {port} open → {WEAK_PORTS[port]}")
+                        device["vulnerabilities"].append(f"Port {port} open -> {WEAK_PORTS[port]}")
 
                     outdated = check_version(product, version)
                     if outdated:
